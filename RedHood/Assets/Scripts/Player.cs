@@ -6,32 +6,124 @@ public class Player : MonoBehaviour {
 
     private Rigidbody2D myRigidbody;
 
+    private Animator myAnimator;
+
     [SerializeField]
     private float movementSpeed;
 
     private bool facingRight;
+
+    [SerializeField]
+    private Transform[] groundPoints;
+
+    [SerializeField]
+    private float groundRadius;
+
+    [SerializeField]
+    private LayerMask whatIsGround;
+
+    private bool isGrounded;
+
+    private bool jump;
+
+    [SerializeField]
+    private bool airControl;
+
+    [SerializeField]
+    private float jumpForce;
+
+
+    private bool attack;
+
+    private bool slide;
 
     // Use this for initialization
     void Start ()
     {
         facingRight = true;
         myRigidbody = GetComponent<Rigidbody2D>();
-
+        myAnimator = GetComponent<Animator>();
 	}
-	
-	// Update is called once per frame
-	void FixedUpdate ()
+
+    private void Update()
+    {
+        HandleInput();
+    }
+
+    // Update is called once per frame
+    void FixedUpdate ()
     {
         float horizontal = Input.GetAxis("Horizontal");
+
+        isGrounded = IsGrounded();
 
         HandleMovement(horizontal);
 
         Flip(horizontal);
+
+        HandleAttacks();
+
+        HandleLayers();
+
+        ResetValues();
 	}
 
     private void HandleMovement(float horizontal)
     {
-        myRigidbody.velocity = new Vector2(horizontal * movementSpeed, myRigidbody.velocity.y);
+        if (!myAnimator.GetBool("slide") && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack")&& (isGrounded || airControl))
+        {
+            myRigidbody.velocity = new Vector2(horizontal * movementSpeed, myRigidbody.velocity.y);
+        }
+        if (isGrounded && jump)
+        {
+            isGrounded = false;
+            myRigidbody.AddForce(new Vector2(0, jumpForce));
+            myAnimator.SetTrigger("jump");
+
+        }
+
+        if (myRigidbody.velocity.y < 0)
+        {
+            myAnimator.SetBool("jumplanding", true);
+        }
+        if (slide && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsName("Slide"))
+        {
+            myAnimator.SetBool("slide", true);
+        }
+        else if (!this.myAnimator.GetCurrentAnimatorStateInfo(0).IsName("Slide"))
+        {
+            myAnimator.SetBool("slide", false);
+        }
+
+        // Start animating after we have moved the player (speed with lower caps relating to speed in animating condition)
+        myAnimator.SetFloat("speed", Mathf.Abs(horizontal));
+    }
+
+    private void HandleAttacks()
+    {
+        if (attack && !this.myAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
+        {
+            myAnimator.SetTrigger("attack");
+            myRigidbody.velocity = Vector2.zero;
+        }
+    }
+
+    private void HandleInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            jump = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            attack = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftControl))
+        {
+            slide = true;
+        }
     }
 
     private void Flip(float horizontal)
@@ -45,6 +137,48 @@ public class Player : MonoBehaviour {
             theScale.x *= -1;
 
             transform.localScale = theScale;
+        }
+    }
+
+    private void ResetValues()
+    {
+        attack = false;
+        slide = false;
+        jump = false;
+    }
+
+    private bool IsGrounded()
+    {
+        if (myRigidbody.velocity.y <= 0)
+        {
+            foreach (Transform point in groundPoints)
+            {
+                Collider2D[] colliders = Physics2D.OverlapCircleAll(point.position, groundRadius, whatIsGround);
+
+                for (int i = 0; i < colliders.Length; i++)
+                {
+                    if (colliders[i].gameObject != gameObject)
+
+                    {
+                        myAnimator.ResetTrigger("jump");
+                        myAnimator.SetBool("jumplanding", false);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void HandleLayers()
+    {
+        if (!isGrounded)
+        {
+            myAnimator.SetLayerWeight(1, 1);
+        }
+        else
+        {
+            myAnimator.SetLayerWeight(1, 0);
         }
     }
 }
