@@ -53,6 +53,12 @@ public class Player : MonoBehaviour {
 
     public bool OnGround { get; set; }
 
+    // For Shooting
+    public Transform gunTip;
+    public GameObject bullet;
+    float fireRate = 0.5f; // Shoot bullet every half a second
+    float nextFire = 0f;
+
     // Use this for initialization
     void Start ()
     {
@@ -64,6 +70,25 @@ public class Player : MonoBehaviour {
     private void Update()
     {
         HandleInput();
+
+        // Player shooting
+        if (Input.GetAxisRaw("Fire1") > 0) shootBullet();
+    }
+
+    void shootBullet()
+    {
+        if (Time.time > nextFire)
+        {
+            nextFire = Time.time + fireRate;
+            if (facingRight)
+            {
+                Instantiate(bullet, gunTip.position, Quaternion.Euler(new Vector3(0, 0, 0)));
+            }
+            else if (!facingRight)
+            {
+                Instantiate(bullet, gunTip.position, Quaternion.Euler(new Vector3(0, 0, 180f)));
+            }
+        }
     }
 
     // Update is called once per frame
@@ -107,12 +132,12 @@ public class Player : MonoBehaviour {
             myAnimator.SetTrigger("jump");
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.P))
         {
             myAnimator.SetTrigger("attack");
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftControl))
+        if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             myAnimator.SetTrigger("slide");
         }
